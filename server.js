@@ -8,7 +8,7 @@ const app = express();
 app.use(express.json());
 app.use(express.static("public"));
 
-const GEMINI_API_KEY = AIzaSyCfD0F7fDT9_Fh-0rBURtsQ4GPz4cUJpKg;
+const GEMINI_API_KEY = "AIzaSyCfD0F7fDT9_Fh-0rBURtsQ4GPz4cUJpKg";
 
 // --- System Prompt (website info + services) ---
 function buildSystemPrompt() {
@@ -91,4 +91,5 @@ const PORT = process.env.PORT || 3000;
 app.listen(PORT, () =>
   console.log(`🚀 Server running at http://localhost:${PORT}`)
 );
+
 
