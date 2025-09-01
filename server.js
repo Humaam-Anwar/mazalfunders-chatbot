@@ -46,8 +46,12 @@ app.post("/api/chat", async (req, res) => {
         body: JSON.stringify({
           contents: [
             {
+              role: "system",
+              parts: [{ text: buildSystemPrompt() }],
+            },
+            {
               role: "user",
-              parts: [{ text: buildSystemPrompt() + "\nUser: " + userMessage }],
+              parts: [{ text: userMessage }],
             },
           ],
         }),
@@ -69,8 +73,10 @@ app.post("/api/chat", async (req, res) => {
   }
 });
 
+
 // ----------------- START SERVER -----------------
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`🚀 Server running on http://localhost:${PORT}`);
 });
+
