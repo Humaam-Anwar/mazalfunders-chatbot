@@ -5,12 +5,12 @@
   document.body.appendChild(container);
 
   // Widget.html fetch karke inject karo
-  fetch("https://mazalfunders-chatbot-production.up.railway.app/widget.html")
+  fetch("https://tumhara-bot.railway.app/") // ✅ root par hai file
     .then((res) => res.text())
     .then((html) => {
       container.innerHTML = html;
 
-      // Yahan agar widget.html ke andar koi <script> hai to run karna hoga manually
+      // Scripts ko properly re-run karna
       container.querySelectorAll("script").forEach((oldScript) => {
         const newScript = document.createElement("script");
         if (oldScript.src) {
