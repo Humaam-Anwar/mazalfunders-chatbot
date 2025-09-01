@@ -104,11 +104,11 @@
     </div>
     <div id="messages" class="messages"></div>
     <div id="quick" class="quick">
-      <button data-q="I want to book a consultation">Book Consultation</button>
-      <button data-q="Email option">Email</button>
-      <button data-q="Phone option">Phone</button>
-      <button data-q="Calendly option">Calendly</button>
-    </div>
+  <button data-q="I want to book a consultation">Book Consultation</button>
+  <button data-q="Can I book via Email?">Via Email</button>
+  <button data-q="Can I book via Phone?">Via Phone</button>
+  <button data-q="Can I book via Calendly?">Via Calendly</button>
+</div>
     <div class="composer">
       <input id="input" type="text" placeholder="Ask to book a consultation..." />
       <button id="send" class="btn-send">Send</button>
@@ -186,10 +186,15 @@
   quick.addEventListener('click',e=>{const btn=e.target.closest('button[data-q]'); if(!btn)return; const q=btn.getAttribute('data-q'); if(!openState)openPanel(); sendMessage(q);});
 
   // Greeting updated
-  addMessage({who:'bot',text:'Hi! How may I help you? 😊',time:timeNow()});
+  addMessage({
+    who:'bot',
+    text:'How may I help you? You can book a consultation via Email, Phone, or Calendly.',
+    time:timeNow()
+  });
 
   document.addEventListener('keydown',e=>{if(e.key==='Escape' && openState) closePanel();});
 })();
 </script>
 </body>
 </html>
+
