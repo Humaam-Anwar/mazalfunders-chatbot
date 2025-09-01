@@ -33,6 +33,7 @@ app.get("/", (req, res) => {
 });
 
 // Chat endpoint
+// Chat endpoint
 app.post("/api/chat", async (req, res) => {
   try {
     const userMessage = req.body.message || "";
@@ -43,15 +44,15 @@ app.post("/api/chat", async (req, res) => {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "X-goog-api-key": GEMINI_API_KEY, // ✅ FIXED
+          "X-goog-api-key": process.env.GOOGLE_API_KEY || process.env.Gemini_API_KeY, // fallback
         },
         body: JSON.stringify({
           contents: [
             {
+              role: "user",
               parts: [
-                {
-                  text: buildSystemPrompt() + "\nUser: " + userMessage,
-                },
+                { text: buildSystemPrompt() }, // system role instructions
+                { text: userMessage },        // actual user message
               ],
             },
           ],
@@ -75,10 +76,12 @@ app.post("/api/chat", async (req, res) => {
   }
 });
 
+
 // ----------------- START SERVER -----------------
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`🚀 Server running on http://localhost:${PORT}`);
 });
+
 
 
