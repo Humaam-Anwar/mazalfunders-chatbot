@@ -1,25 +1,25 @@
 (function () {
-  // Container create karo
   const container = document.createElement("div");
   container.id = "chatbot-container";
   document.body.appendChild(container);
 
-  // Widget.html fetch karke inject karo
-  fetch("https://mazalfunders-chatbot-production.up.railway.app/") // ✅ sahi path, no double slash
+  fetch("https://mazalfunders-chatbot-production.up.railway.app/")
     .then((res) => res.text())
     .then((html) => {
+      // Convert relative paths to absolute
+      const baseUrl = "https://mazalfunders-chatbot-production.up.railway.app";
+      html = html.replace(/(src|href)="\.\/(.*?)"/g, `$1="${baseUrl}/$2"`);
+
       container.innerHTML = html;
 
-      // Scripts ko dobara execute karna
-      const scripts = container.querySelectorAll("script");
-      scripts.forEach((oldScript) => {
+      // Re-run scripts
+      container.querySelectorAll("script").forEach((oldScript) => {
         const newScript = document.createElement("script");
         if (oldScript.src) {
           newScript.src = oldScript.src;
         } else {
           newScript.textContent = oldScript.textContent;
         }
-        // Important: container me hi add karo
         container.appendChild(newScript);
       });
     })
