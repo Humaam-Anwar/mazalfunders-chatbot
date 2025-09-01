@@ -27,7 +27,7 @@ Do not talk about unrelated services or topics.`;
 
 // ----------------- ROUTES -----------------
 
-// Health check (return widget.html instead of plain text)
+// Health check → return widget.html
 app.get("/", (req, res) => {
   res.sendFile(process.cwd() + "/public/widget.html");
 });
@@ -43,18 +43,18 @@ app.post("/api/chat", async (req, res) => {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "X-goog-api-key": GEMINI_API_KEY
+          "X-goog-api-key": process.env.GOOGLE_API_KEY, // ✅ FIXED
         },
         body: JSON.stringify({
           contents: [
             {
               parts: [
                 {
-                  text: buildSystemPrompt() + "\nUser: " + userMessage
-                }
-              ]
-            }
-          ]
+                  text: buildSystemPrompt() + "\nUser: " + userMessage,
+                },
+              ],
+            },
+          ],
         }),
       }
     );
@@ -75,13 +75,8 @@ app.post("/api/chat", async (req, res) => {
   }
 });
 
-
-
 // ----------------- START SERVER -----------------
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`🚀 Server running on http://localhost:${PORT}`);
 });
-
-
-
