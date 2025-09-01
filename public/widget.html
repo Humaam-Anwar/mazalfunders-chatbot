@@ -104,12 +104,13 @@
     </div>
     <div id="messages" class="messages"></div>
     <div id="quick" class="quick">
-      <button data-q="Which services are under $100?">Under $100</button>
-      <button data-q="How do I book a service?">How to book</button>
-      <button data-q="If I take a $50 service for 12 months how much?">$50 × 12</button>
+      <button data-q="I want to book a consultation">Book Consultation</button>
+      <button data-q="Email option">Email</button>
+      <button data-q="Phone option">Phone</button>
+      <button data-q="Calendly option">Calendly</button>
     </div>
     <div class="composer">
-      <input id="input" type="text" placeholder="Ask about services, pricing or booking..." />
+      <input id="input" type="text" placeholder="Ask to book a consultation..." />
       <button id="send" class="btn-send">Send</button>
     </div>
   </div>
@@ -135,7 +136,7 @@
   let openState=false, unread=0;
 
   function timeNow(){const d=new Date(); return d.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});}
-  function addMessage({who='bot',text='',time=''}){
+  function addMessage({who='bot',text='',time=''}) {
     const row=document.createElement('div'); row.className='msg-row';
     const bubble=document.createElement('div'); bubble.className='msg '+(who==='user'?'user':'bot'); bubble.innerHTML=text;
     row.appendChild(bubble);
@@ -157,22 +158,36 @@
   function togglePanel(){openState?closePanel():openPanel();}
   function escapeHtml(s){return String(s).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[m]);}
 
-  async function sendMessage(text){if(!text)return; addMessage({who:'user',text:escapeHtml(text),time:timeNow()}); inputEl.value=''; setTyping(true); sendBtn.disabled=true;
+  async function sendMessage(text){
+    if(!text)return;
+    addMessage({who:'user',text:escapeHtml(text),time:timeNow()});
+    inputEl.value='';
+    setTyping(true);
+    sendBtn.disabled=true;
     try{
       const res=await fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({message:text})});
-      const json=await res.json(); setTyping(false); sendBtn.disabled=false;
+      const json=await res.json();
+      setTyping(false); sendBtn.disabled=false;
       if(res.ok && json?.reply){addMessage({who:'bot',text:escapeHtml(json.reply),time:timeNow()});}
       else{const err=json?.detail||json?.error||'No response'; addMessage({who:'bot',text:'⚠️ Error: '+escapeHtml(err),time:timeNow()}); if(!openState){unread++; unreadEl.textContent=unread; unreadEl.style.display='flex';}}
-    }catch(e){setTyping(false); sendBtn.disabled=false; addMessage({who:'bot',text:'⚠️ Network error. Please check server.',time:timeNow()}); if(!openState){unread++; unreadEl.textContent=unread; unreadEl.style.display='flex';}}
+    }catch(e){
+      setTyping(false); sendBtn.disabled=false;
+      addMessage({who:'bot',text:'⚠️ Network error. Please check server.',time:timeNow()});
+      if(!openState){unread++; unreadEl.textContent=unread; unreadEl.style.display='flex';}
+    }
   }
 
-  toggle.addEventListener('click',togglePanel); toggle.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' ')togglePanel();});
-  closeBtn.addEventListener('click',closePanel); minimizeBtn.addEventListener('click',closePanel);
+  toggle.addEventListener('click',togglePanel); 
+  toggle.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' ')togglePanel();});
+  closeBtn.addEventListener('click',closePanel); 
+  minimizeBtn.addEventListener('click',closePanel);
   sendBtn.addEventListener('click',()=>{const v=inputEl.value.trim(); if(!v)return; sendMessage(v);});
   inputEl.addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault(); sendBtn.click();}});
   quick.addEventListener('click',e=>{const btn=e.target.closest('button[data-q]'); if(!btn)return; const q=btn.getAttribute('data-q'); if(!openState)openPanel(); sendMessage(q);});
 
-  addMessage({who:'bot',text:'Hi! I can help with services, pricing and booking. Try: "Which services are under $100?"',time:timeNow()});
+  // Greeting updated
+  addMessage({who:'bot',text:'Hi! How may I help you? 😊',time:timeNow()});
+
   document.addEventListener('keydown',e=>{if(e.key==='Escape' && openState) closePanel();});
 })();
 </script>
