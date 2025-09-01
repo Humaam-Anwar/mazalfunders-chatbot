@@ -7,7 +7,7 @@ import { SITE_INFO } from "./config/siteInfo.js";
 const app = express();
 app.use(cors());
 app.use(bodyParser.json());
-app.use(express.static("public"));
+app.use(express.static("public")); // Serve widget.html and assets from public folder
 
 // ----------------- SYSTEM PROMPT -----------------
 function buildSystemPrompt() {
@@ -27,9 +27,9 @@ Do not talk about unrelated services or topics.`;
 
 // ----------------- ROUTES -----------------
 
-// Health check
+// Health check (return widget.html instead of plain text)
 app.get("/", (req, res) => {
-  res.send("✅ Consultation Chatbot is running.");
+  res.sendFile(process.cwd() + "/public/widget.html");
 });
 
 // Chat endpoint
