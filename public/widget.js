@@ -5,20 +5,22 @@
   document.body.appendChild(container);
 
   // Widget.html fetch karke inject karo
-  fetch("https://mazalfunders-chatbot-production.up.railway.app//") // ✅ root par hai file
+  fetch("https://mazalfunders-chatbot-production.up.railway.app/") // ✅ sahi path, no double slash
     .then((res) => res.text())
     .then((html) => {
       container.innerHTML = html;
 
-      // Scripts ko properly re-run karna
-      container.querySelectorAll("script").forEach((oldScript) => {
+      // Scripts ko dobara execute karna
+      const scripts = container.querySelectorAll("script");
+      scripts.forEach((oldScript) => {
         const newScript = document.createElement("script");
         if (oldScript.src) {
           newScript.src = oldScript.src;
         } else {
           newScript.textContent = oldScript.textContent;
         }
-        document.body.appendChild(newScript);
+        // Important: container me hi add karo
+        container.appendChild(newScript);
       });
     })
     .catch((err) => {
