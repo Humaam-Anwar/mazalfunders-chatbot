@@ -43,7 +43,7 @@ app.post("/api/chat", async (req, res) => {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "X-goog-api-key": process.env.GOOGLE_API_KEY
+          "X-goog-api-key": GEMINI_API_KEY
         },
         body: JSON.stringify({
           contents: [
@@ -82,5 +82,6 @@ const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`🚀 Server running on http://localhost:${PORT}`);
 });
+
 
 
