@@ -1,55 +1,94 @@
-// server.js
 import express from "express";
-import cors from "cors";
-import { SITE_INFO } from "./siteInfo.js";
+import dotenv from "dotenv";
 import fetch from "node-fetch";
+import { SITE_INFO } from "./config/siteInfo.js";
 
+dotenv.config();
 const app = express();
-app.use(cors());
 app.use(express.json());
+app.use(express.static("public"));
 
-// Build system prompt for consultation-only bot
+const GEMINI_API_KEY = "AIzaSyCfD0F7fDT9_Fh-0rBURtsQ4GPz4cUJpKg";
+
+// --- System Prompt (website info + services) ---
 function buildSystemPrompt() {
-  return `
-You are a helpful assistant for ${SITE_INFO.website}.
-Your only job: help clients book a consultation.
-
-Always greet with: "Hi! How may I help you?"
-
-If client asks about consultation → ask:
-"Would you like to book via Email, Phone, or Calendly?"
-
-- If Email → reply: ${SITE_INFO.email}
-- If Phone → reply: ${SITE_INFO.phone}
-- If Calendly → reply: ${SITE_INFO.calendly}
-
-Do not answer about services, pricing, or anything else.
-Stay focused on consultation booking only.
-  `;
+  const servicesText = SITE_INFO.services
+    .map((s) => `- ${s.name}: $${s.price_usd} — ${s.desc}`)
+    .join("\n");
+  return `You are a helpful assistant for ${SITE_INFO.website}.
+Contact: Phone ${SITE_INFO.phone}, Email ${SITE_INFO.email}, Booking ${SITE_INFO.booking}.
+Services:
+${servicesText}
+Always answer clearly about pricing, booking, totals, and contact info.`;
 }
 
-app.post("/chat", async (req, res) => {
+// --- Chat Endpoint ---
+app.post("/api/chat", async (req, res) => {
+  const userMessage = req.body.message || "";
+  console.log("📩 User message:", userMessage);
+
   try {
-    const { message } = req.body;
+    const r = await fetch(
+      "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-goog-api-key": GEMINI_API_KEY
+        },
+        body: JSON.stringify({
+          contents: [
+            {
+              parts: [
+                {
+                  text: `${buildSystemPrompt()}\nUser: ${userMessage}\nAssistant:`
+                }
+              ]
+            }
+          ]
+        })
+      }
+    );
 
-    const response = await fetch("https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=YOUR_API_KEY", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        contents: [{ role: "user", parts: [{ text: message }] }],
-        systemInstruction: { role: "system", parts: [{ text: buildSystemPrompt() }] }
-      })
-    });
+    console.log("🔗 Gemini API status:", r.status);
 
-    const data = await response.json();
-    const botReply = data.candidates?.[0]?.content?.parts?.[0]?.text || "Sorry, I couldn't process that.";
+    if (!r.ok) {
+      const errText = await r.text();
+      console.error("❌ Gemini request failed:", r.status, errText);
+      return res.status(500).json({
+        error: "Gemini request failed",
+        status: r.status,
+        detail: errText
+      });
+    }
 
-    res.json({ reply: botReply });
+    const data = await r.json();
+    console.log("✅ Gemini API response:", JSON.stringify(data, null, 2));
 
-  } catch (error) {
-    console.error("Error:", error);
-    res.status(500).json({ reply: "Internal server error." });
+    let reply = "";
+    if (data?.candidates?.[0]?.content?.parts?.[0]?.text) {
+      reply = data.candidates[0].content.parts[0].text;
+    } else {
+      reply = "⚠️ Sorry, I couldn’t generate a proper response.";
+    }
+
+    res.json({ reply });
+  } catch (err) {
+    console.error("💥 Chat API error:", err);
+    res.status(500).json({ error: "Server error", detail: err.message });
   }
 });
 
-app.listen(3000, () => console.log("Server running on port 3000"));
+// --- Routes ---
+app.get("/", (req, res) => {
+  res.sendFile(process.cwd() + "/public/widget.html");
+});
+
+app.get("/api/siteinfo", (req, res) => res.json(SITE_INFO));
+
+// --- Server Start ---
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () =>
+  console.log(`🚀 Server running at http://localhost:${PORT}`)
+);
+
