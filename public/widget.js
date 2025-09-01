@@ -5,7 +5,7 @@
   document.body.appendChild(container);
 
   // Widget.html fetch karke inject karo
-  fetch("https://tumhara-bot.railway.app/") // ✅ root par hai file
+  fetch("https://mazalfunders-chatbot-production.up.railway.app//") // ✅ root par hai file
     .then((res) => res.text())
     .then((html) => {
       container.innerHTML = html;
