@@ -196,12 +196,32 @@
 
   document.addEventListener('keydown',e=>{if(e.key==='Escape' && openState) closePanel();});
 
+function openPanel() {
+    panel.style.display = 'flex';
+    setTimeout(()=>panel.classList.add('open'),10);
+    openState = true;
+    unread = 0; 
+    unreadEl.style.display = 'none';
+    inputEl.focus();
+
+    // Parent ko batao
+    window.parent.postMessage('open','*');
+}
+
+function closePanel() {
+    panel.classList.remove('open');
+    setTimeout(()=>panel.style.display='none',200);
+    openState = false;
+
+    // No need to post 'close' anymore
+}
 
 
 })();
 </script>
 </body>
 </html>
+
 
 
 
