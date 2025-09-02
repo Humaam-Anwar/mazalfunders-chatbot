@@ -89,11 +89,7 @@ app.get("/", (req, res) => {
 
 app.get("/api/siteinfo", (req, res) => res.json(SITE_INFO));
 
-// when panel opens
-window.parent.postMessage('open', '*');
 
-// when panel closes
-window.parent.postMessage('close', '*');
 
 
 // --- Server Start ---
@@ -101,4 +97,5 @@ const PORT = process.env.PORT || 3000;
 app.listen(PORT, () =>
   console.log(`🚀 Server running at http://localhost:${PORT}`)
 );
+
 
