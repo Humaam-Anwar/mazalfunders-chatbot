@@ -192,9 +192,18 @@
     time:timeNow()
   });
 
+ 
+
   document.addEventListener('keydown',e=>{if(e.key==='Escape' && openState) closePanel();});
+
+   // when panel opens
+window.parent.postMessage('open', '*');
+
+// when panel closes
+window.parent.postMessage('close', '*');
 })();
 </script>
 </body>
 </html>
+
 
