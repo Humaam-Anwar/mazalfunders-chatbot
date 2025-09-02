@@ -196,14 +196,33 @@
 
   document.addEventListener('keydown',e=>{if(e.key==='Escape' && openState) closePanel();});
 
-   // when panel opens
-window.parent.postMessage('open', '*');
+// jab panel khula ho
+function openPanel() {
+    panel.style.display = 'flex';
+    setTimeout(()=>panel.classList.add('open'),10);
+    openState = true;
+    unread = 0; 
+    unreadEl.style.display = 'none';
+    inputEl.focus();
 
-// when panel closes
-window.parent.postMessage('close', '*');
+    // Parent ko batao
+    window.parent.postMessage('open','*');
+}
+
+// jab panel band ho
+function closePanel() {
+    panel.classList.remove('open');
+    setTimeout(()=>panel.style.display='none',200);
+    openState = false;
+
+    // Parent ko batao
+    window.parent.postMessage('close','*');
+}
+
 })();
 </script>
 </body>
 </html>
+
 
 
