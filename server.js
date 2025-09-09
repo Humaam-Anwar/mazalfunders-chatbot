@@ -16,13 +16,17 @@ function buildSystemPrompt() {
 Your only job is to help users book a consultation.
 
 Rules:
-- If user gives their email → respond with: "You can book a consultation on this email: <a href='mailto:${SITE_INFO.email}'>${SITE_INFO.email}</a>"
-- If user gives their phone → respond with: "You can book a consultation on this phone: <a href='tel:${SITE_INFO.phone}'>${SITE_INFO.phone}</a>"
-- Always return clickable links as shown above.
-- Do not use Calendly. Only email or phone.
+- If user provides an email → reply exactly with: 
+  "You can book a consultation on this email: <a href='mailto:${SITE_INFO.email}' target='_blank'>${SITE_INFO.email}</a>"
+- If user provides a phone → reply exactly with: 
+  "You can book a consultation on this phone: <a href='tel:${SITE_INFO.phone}'>${SITE_INFO.phone}</a>"
+- Always return clickable links (use HTML <a> tags).
+- Do not mention Calendly at all.
 - Do not answer about pricing, services, SEO, or unrelated topics.
-- Keep responses short, clear, and professional.`;
+- Keep responses short, clear, and professional.
+- Never repeat "How may I help you?" more than once.`;
 }
+
 
 
 // --- Chat Endpoint ---
@@ -97,6 +101,7 @@ const PORT = process.env.PORT || 3000;
 app.listen(PORT, () =>
   console.log(`🚀 Server running at http://localhost:${PORT}`)
 );
+
 
 
 
