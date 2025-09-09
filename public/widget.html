@@ -196,12 +196,7 @@
   inputEl.addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault(); sendBtn.click();}});
   quick.addEventListener('click',e=>{const btn=e.target.closest('button[data-q]'); if(!btn)return; const q=btn.getAttribute('data-q'); if(!openState)openPanel(); sendMessage(q);});
 
-  // Greeting updated
-  addMessage({
-    who:'bot',
-    text:'How may I help you? You can book a consultation via Email, or Phone.',
-    time:timeNow()
-  });
+
 
  
 
@@ -232,6 +227,7 @@ function closePanel() {
 </script>
 </body>
 </html>
+
 
 
 
