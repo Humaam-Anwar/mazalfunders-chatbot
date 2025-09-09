@@ -158,23 +158,35 @@
   function escapeHtml(s){return String(s).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[m]);}
 
   async function sendMessage(text){
-    if(!text)return;
-    addMessage({who:'user',text:escapeHtml(text),time:timeNow()});
-    inputEl.value='';
-    setTyping(true);
-    sendBtn.disabled=true;
-    try{
-      const res=await fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({message:text})});
-      const json=await res.json();
-      setTyping(false); sendBtn.disabled=false;
-      if(res.ok && json?.reply){addMessage({who:'bot',text:escapeHtml(json.reply),time:timeNow()});}
-      else{const err=json?.detail||json?.error||'No response'; addMessage({who:'bot',text:'⚠️ Error: '+escapeHtml(err),time:timeNow()}); if(!openState){unread++; unreadEl.textContent=unread; unreadEl.style.display='flex';}}
-    }catch(e){
-      setTyping(false); sendBtn.disabled=false;
-      addMessage({who:'bot',text:'⚠️ Network error. Please check server.',time:timeNow()});
+  if(!text) return;
+  addMessage({who:'user', text: escapeHtml(text), time: timeNow()});
+  inputEl.value='';
+  setTyping(true);
+  sendBtn.disabled=true;
+  try{
+    const res = await fetch('/api/chat',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({message:text})
+    });
+    const json = await res.json();
+    setTyping(false); sendBtn.disabled=false;
+
+    if(res.ok && json?.reply){
+      // ⬇️ Bot message: don't escape, allow clickable link
+      addMessage({who:'bot', text: json.reply, time: timeNow()});
+    } else {
+      const err = json?.detail||json?.error||'No response';
+      addMessage({who:'bot', text:'⚠️ Error: '+escapeHtml(err), time: timeNow()});
       if(!openState){unread++; unreadEl.textContent=unread; unreadEl.style.display='flex';}
     }
+  } catch(e){
+    setTyping(false); sendBtn.disabled=false;
+    addMessage({who:'bot', text:'⚠️ Network error. Please check server.', time:timeNow()});
+    if(!openState){unread++; unreadEl.textContent=unread; unreadEl.style.display='flex';}
   }
+}
+
 
   toggle.addEventListener('click',togglePanel); 
   toggle.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' ')togglePanel();});
@@ -220,6 +232,7 @@ function closePanel() {
 </script>
 </body>
 </html>
+
 
 
 
