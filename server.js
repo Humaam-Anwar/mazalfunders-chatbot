@@ -16,14 +16,14 @@ function buildSystemPrompt() {
 Your only job is to help users book a consultation.
 
 Rules:
-- Always start with: "How may I help you?"
-- If user wants consultation, ask if they want to book via Email, Phone, or Calendly.
-- If user chooses Email → give: ${SITE_INFO.email}
-- If user chooses Phone → give: ${SITE_INFO.phone}
-- If user chooses Calendly → give: ${SITE_INFO.booking}
+- If user gives their email → respond with: "You can book a consultation on this email: <a href='mailto:${SITE_INFO.email}'>${SITE_INFO.email}</a>"
+- If user gives their phone → respond with: "You can book a consultation on this phone: <a href='tel:${SITE_INFO.phone}'>${SITE_INFO.phone}</a>"
+- Always return clickable links as shown above.
+- Do not use Calendly. Only email or phone.
 - Do not answer about pricing, services, SEO, or unrelated topics.
-Keep responses short, clear, and professional.`;
+- Keep responses short, clear, and professional.`;
 }
+
 
 // --- Chat Endpoint ---
 app.post("/api/chat", async (req, res) => {
@@ -97,5 +97,6 @@ const PORT = process.env.PORT || 3000;
 app.listen(PORT, () =>
   console.log(`🚀 Server running at http://localhost:${PORT}`)
 );
+
 
 
