@@ -42,6 +42,7 @@ Strictly follow these rules.`;
 
 
 
+
 // --- Chat Endpoint ---
 app.post("/api/chat", async (req, res) => {
   const userMessage = req.body.message || "";
@@ -114,6 +115,7 @@ const PORT = process.env.PORT || 3000;
 app.listen(PORT, () =>
   console.log(`🚀 Server running at http://localhost:${PORT}`)
 );
+
 
 
 
