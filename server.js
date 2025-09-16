@@ -52,57 +52,71 @@ Rules:
 function ruleBasedOverride(userMessage) {
   const msg = userMessage.trim().toLowerCase();
 
-  // Reset memory on greeting
-  if (msg === "hi" || msg === "hello") {
+  // --- Greetings reset ---
+  if (["hi", "hello", "hey"].includes(msg)) {
     bookingMethod = null;
     return "Welcome back! How may I help you with booking?";
   }
 
-  // Polite small talk
-  if (msg === "thanks" || msg === "thank you") return "You're welcome!";
+  // --- Polite small talk ---
+  if (["thanks", "thank you"].includes(msg)) return "You're welcome!";
   if (msg.includes("you too")) return "Thank you! Take care.";
   if (msg.includes("bye") || msg.includes("goodbye"))
     return "Goodbye! Have a great day!";
 
-  // Ok/Alright
+  // --- Stop / decline booking ---
+  if (["no", "nhi", "not now", "later", "no thanks", "stop"].some(w => msg.includes(w))) {
+    bookingMethod = "declined";
+    return "No problem! If you change your mind, I’m here to help you with booking anytime.";
+  }
+
+  // --- Ok / Alright ---
   if (msg === "alright" || msg === "ok") {
-    if (!bookingMethod) return "Great! Would you like to book via Email or Phone?";
+    if (!bookingMethod || bookingMethod === "declined") {
+      return "Got it. If you’d like to book later, just let me know.";
+    }
     return "Great!";
   }
 
-  // User chooses method
-  if (msg.includes("email") && !msg.includes("already")) {
+  // --- User chooses booking method ---
+  if (msg.includes("email") && !msg.includes("already") && !msg.includes("no")) {
     bookingMethod = "email";
     return `You can book a consultation on this email: <a href='mailto:${SITE_INFO.email}' target='_blank'>${SITE_INFO.email}</a>`;
   }
 
-  if (msg.includes("phone") && !msg.includes("already")) {
+  if (msg.includes("phone") && !msg.includes("already") && !msg.includes("no")) {
     bookingMethod = "phone";
     return `You can book a consultation on this phone: <a href='tel:${SITE_INFO.phone}'>${SITE_INFO.phone}</a>`;
   }
 
-  // Already got info
-  if (msg.includes("already got") || msg.includes("already have")) {
+  // --- Already got info ---
+  if (msg.includes("already")) {
     return "Great! You already have that. Let me know if you need the other option too.";
   }
 
-  // Which is better
+  // --- Compare / prefer ---
   if (msg.includes("better") || msg.includes("prefer")) {
     return "Both work. Phone is faster for confirmation, Email is better for written details.";
   }
 
-  // Missed question complaint
+  // --- Complaint about no response ---
   if (msg.includes("didn’t answer") || msg.includes("did not answer") || msg.includes("you missed")) {
     return "Sorry if I missed that. Could you repeat your question?";
   }
 
-  // Identity questions
+  // --- Complaint about owner not replying ---
+  if (msg.includes("not replying") || msg.includes("not responding")) {
+    return "Sorry to hear that. If the email isn’t responsive, would you like to try booking by phone instead?";
+  }
+
+  // --- Identity ---
   if (msg.includes("your name") || msg.includes("who are you")) {
     return "I’m your booking assistant. I can help you with Email or Phone.";
   }
 
   return null; // fallback to Gemini
 }
+
 
 // --- Chat Endpoint ---
 app.post("/api/chat", async (req, res) => {
@@ -184,3 +198,4 @@ const PORT = process.env.PORT || 3000;
 app.listen(PORT, () =>
   console.log(`🚀 Server running at http://localhost:${PORT}`)
 );
+
