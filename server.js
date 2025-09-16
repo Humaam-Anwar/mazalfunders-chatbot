@@ -42,12 +42,33 @@ Your ONLY task is to help users book a consultation. Follow these exact rules:
 Strictly follow these rules.`;
 }
 
+// --- Rule-based QA overrides ---
+function ruleBasedOverride(userMessage, reply) {
+  const msg = userMessage.trim().toLowerCase();
+
+  // Basic polite flow
+  if (msg === "ok") return "Great! Is there anything else I can help you with?";
+  if (msg === "thanks" || msg === "thank you")
+    return "You're welcome! Is there anything else I can help you with?";
+  if (msg === "no thanks" || msg === "no, thanks" || msg === "no")
+    return "Alright, have a great day!";
+  if (msg === "bye" || msg === "goodbye") return "Goodbye! Have a nice day.";
+  if (msg.includes("you too")) return "Thank you! Take care.";
+
+  // Prevent repeating greeting again
+  if (reply.includes("How may I help you?") && greeted) {
+    return "Is there anything else related to booking you’d like help with?";
+  }
+
+  return reply;
+}
+
 // --- Chat Endpoint ---
 app.post("/api/chat", async (req, res) => {
   const userMessage = req.body.message || "";
   console.log("📩 User message:", userMessage);
 
-  // Handle greeting manually (so it's not repeated by Gemini)
+  // Handle greeting manually
   if (!greeted) {
     greeted = true;
     return res.json({ reply: "How may I help you?" });
@@ -94,24 +115,7 @@ app.post("/api/chat", async (req, res) => {
     let reply = "";
     if (data?.candidates?.[0]?.content?.parts?.[0]?.text) {
       reply = data.candidates[0].content.parts[0].text;
-
-      // --- Post-processing overrides ---
-      const msg = userMessage.trim().toLowerCase();
-
-      if (msg === "ok") {
-        reply = "Great! Is there anything else I can help you with?";
-      }
-      if (msg === "thanks" || msg === "thank you") {
-        reply = "You're welcome! Is there anything else I can help you with?";
-      }
-      if (msg === "no thanks" || msg === "no, thanks" || msg === "no") {
-        reply = "Alright, have a great day!";
-      }
-
-      // Prevent repeating greeting again
-      if (reply.includes("How may I help you?") && greeted) {
-        reply = "Is there anything else related to booking you’d like help with?";
-      }
+      reply = ruleBasedOverride(userMessage, reply);
     } else {
       reply = "⚠️ Sorry, I couldn’t generate a proper response.";
     }
@@ -123,7 +127,7 @@ app.post("/api/chat", async (req, res) => {
   }
 });
 
-// --- Reset endpoint for testing (optional) ---
+// --- Reset endpoint for testing ---
 app.post("/api/reset", (req, res) => {
   greeted = false;
   res.json({ reset: true });
