@@ -64,21 +64,28 @@ function ruleBasedOverride(userMessage) {
   if (msg.includes("bye") || msg.includes("goodbye"))
     return "Goodbye! Have a great day!";
 
-  // --- Stop / decline booking ---
+  // --- Decline booking ---
   if (["no", "nhi", "not now", "later", "no thanks", "stop"].some(w => msg.includes(w))) {
     bookingMethod = "declined";
-    return "No problem! If you change your mind, I’m here to help you with booking anytime.";
+    return "No problem! If you change your mind, I’m here anytime.";
   }
 
-  // --- Ok / Alright ---
-  if (msg === "alright" || msg === "ok") {
-    if (!bookingMethod || bookingMethod === "declined") {
+  // --- Ok / Alright / Yes / Got it ---
+  if (
+    ["ok", "okay", "alright", "yes", "sure", "yep"].includes(msg) ||
+    msg.includes("got it") ||
+    msg.includes("done")
+  ) {
+    if (bookingMethod === "email" || bookingMethod === "phone") {
+      return "Perfect! You already have the details. Let me know if you need anything else.";
+    }
+    if (bookingMethod === "declined") {
       return "Got it. If you’d like to book later, just let me know.";
     }
-    return "Great!";
+    return "Great! Would you like to book via Email or Phone?";
   }
 
-  // --- User chooses booking method ---
+  // --- User chooses method ---
   if (msg.includes("email") && !msg.includes("already") && !msg.includes("no")) {
     bookingMethod = "email";
     return `You can book a consultation on this email: <a href='mailto:${SITE_INFO.email}' target='_blank'>${SITE_INFO.email}</a>`;
@@ -91,6 +98,7 @@ function ruleBasedOverride(userMessage) {
 
   // --- Already got info ---
   if (msg.includes("already")) {
+    bookingMethod = bookingMethod || "known"; // lock state
     return "Great! You already have that. Let me know if you need the other option too.";
   }
 
@@ -99,7 +107,7 @@ function ruleBasedOverride(userMessage) {
     return "Both work. Phone is faster for confirmation, Email is better for written details.";
   }
 
-  // --- Complaint about no response ---
+  // --- Complaint about missing response ---
   if (msg.includes("didn’t answer") || msg.includes("did not answer") || msg.includes("you missed")) {
     return "Sorry if I missed that. Could you repeat your question?";
   }
@@ -114,8 +122,9 @@ function ruleBasedOverride(userMessage) {
     return "I’m your booking assistant. I can help you with Email or Phone.";
   }
 
-  return null; // fallback to Gemini
+  return null; // fallback
 }
+
 
 
 // --- Chat Endpoint ---
@@ -198,4 +207,5 @@ const PORT = process.env.PORT || 3000;
 app.listen(PORT, () =>
   console.log(`🚀 Server running at http://localhost:${PORT}`)
 );
+
 
