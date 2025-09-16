@@ -10,98 +10,98 @@ app.use(express.static("public"));
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 
-// --- Conversation State ---
+// --- State memory (lightweight) ---
 let greeted = false;
-let bookingState = "pending"; 
-// states: pending | choosing | booked
+let bookingMethod = null; // "email" | "phone" | null
 
-// --- System Prompt (mature + always-on) ---
+// --- System Prompt ---
 function buildSystemPrompt() {
   return `You are a professional, polite, and mature booking assistant for ${SITE_INFO.website}.
-Your job: help users book a consultation (via email or phone).
-Behave like a sensible human assistant, not a robot.
+Your job is ONLY to help users book a consultation via Email or Phone.
 
 Rules:
-1. If user asks about booking (appointment, meeting, consultation — even with spelling mistakes), 
-   reply directly with: "Would you like to book via Email or Phone?" and set state to choosing.
+1. If user asks about booking (appointment, meeting, consultation — even with spelling mistakes),
+   reply with: "Would you like to book via Email or Phone?" (but not if they've already chosen).
 
 2. Booking flow:
-   - If user chooses Email → reply with clickable link:
-     "You can book a consultation on this email: <a href='mailto:${SITE_INFO.email}' target='_blank'>${SITE_INFO.email}</a>"
-     (set state to booked)
-   - If user chooses Phone → reply with clickable link:
-     "You can book a consultation on this phone: <a href='tel:${SITE_INFO.phone}'>${SITE_INFO.phone}</a>"
-     (set state to booked)
+   - If user chooses Email → reply: "You can book a consultation on this email: <a href='mailto:${SITE_INFO.email}' target='_blank'>${SITE_INFO.email}</a>"
+   - If user chooses Phone → reply: "You can book a consultation on this phone: <a href='tel:${SITE_INFO.phone}'>${SITE_INFO.phone}</a>"
 
 3. Tone:
    - Professional, clear, short, natural.
-   - No robotic "sorry I can't" — instead politely guide them back to booking if needed.
+   - No robotic "sorry I can’t" — instead politely guide back to booking.
 
 4. Polite handling:
    - If user says "thanks" → "You're welcome!"
    - If user says "you too" → "Thank you! Take care."
    - If user says "bye" → "Goodbye! Have a great day!"
-   - If user says "alright" or "ok":
-       • If booking not done yet → ask "Would you like to book via Email or Phone?"
-       • If booking already done → just reply politely like "Great!" or "Glad I could help."
+   - If user says "alright" or "ok" → only reply once: "Great! Would you like to book via Email or Phone?" (if no method selected yet).
 
-5. Small extras:
-   - If user asks "which is better" between email/phone → reply with a short neutral suggestion:
-     "Both options work. If you prefer quick confirmation, phone is faster. If you prefer details in writing, email is better."
-   - If user makes spelling mistakes, understand them but don’t point it out.
+5. Extra:
+   - If user asks which is better → "Both work. Phone is faster for confirmation, Email is better for written details."
+   - Understand spelling mistakes, don’t point them out.
 
 6. Always-on:
-   - Never end or close the session.
-   - If conversation seems over and user comes back later ("hi", "hello"), politely restart with:
-     "Welcome back! How may I help you with booking?"`;
+   - Never close. If user returns with "hi/hello" → "Welcome back! How may I help you with booking?"`;
 }
 
 // --- Rule-based overrides ---
-function ruleBasedOverride(userMessage, reply) {
+function ruleBasedOverride(userMessage) {
   const msg = userMessage.trim().toLowerCase();
 
-  // Booking flow updates
-  if (msg.includes("book")) bookingState = "choosing";
-  if (msg.includes("email")) bookingState = "booked";
-  if (msg.includes("phone")) bookingState = "booked";
+  // Reset memory if user greets
+  if (msg === "hi" || msg === "hello") {
+    bookingMethod = null;
+    return "Welcome back! How may I help you with booking?";
+  }
 
-  // Polite responses
+  // Polite small talk
   if (msg === "thanks" || msg === "thank you") return "You're welcome!";
   if (msg.includes("you too")) return "Thank you! Take care.";
   if (msg.includes("bye") || msg.includes("goodbye"))
     return "Goodbye! Have a great day!";
 
-  // Handle "alright" / "ok"
-  if (msg === "alright" || msg === "ok") {
-    if (bookingState === "booked") {
-      return "Great! Glad I could help.";
-    } else {
-      return "Would you like to book via Email or Phone?";
-    }
+  if ((msg === "alright" || msg === "ok") && !bookingMethod)
+    return "Great! Would you like to book via Email or Phone?";
+
+  // User chooses method
+  if (msg.includes("email")) {
+    bookingMethod = "email";
+    return `You can book a consultation on this email: <a href='mailto:${SITE_INFO.email}' target='_blank'>${SITE_INFO.email}</a>`;
   }
 
-  // Restart after pause
-  if (msg === "hi" || msg === "hello")
-    return "Welcome back! How may I help you with booking?";
+  if (msg.includes("phone")) {
+    bookingMethod = "phone";
+    return `You can book a consultation on this phone: <a href='tel:${SITE_INFO.phone}'>${SITE_INFO.phone}</a>`;
+  }
 
-  return reply;
+  // Which is better
+  if (msg.includes("better")) {
+    return "Both work. Phone is faster for confirmation, Email is better for written details.";
+  }
+
+  return null; // let Gemini handle
 }
 
 // --- Chat Endpoint ---
 app.post("/api/chat", async (req, res) => {
   const userMessage = req.body.message || "";
-  console.log("📩 User message:", userMessage);
+  console.log("📩 User:", userMessage);
 
-  // Greeting logic (first time only)
+  // Greeting logic
   if (!greeted) {
     greeted = true;
     if (userMessage.toLowerCase().includes("book")) {
-      bookingState = "choosing";
       return res.json({ reply: "Would you like to book via Email or Phone?" });
     }
     return res.json({ reply: "How may I help you?" });
   }
 
+  // Apply rule-based overrides
+  const ruleReply = ruleBasedOverride(userMessage);
+  if (ruleReply) return res.json({ reply: ruleReply });
+
+  // Fallback to Gemini
   try {
     const r = await fetch(
       "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent",
@@ -125,40 +125,34 @@ app.post("/api/chat", async (req, res) => {
       }
     );
 
-    console.log("🔗 Gemini API status:", r.status);
+    console.log("🔗 Gemini status:", r.status);
 
     if (!r.ok) {
       const errText = await r.text();
-      console.error("❌ Gemini request failed:", r.status, errText);
-      return res.status(500).json({
-        error: "Gemini request failed",
-        status: r.status,
-        detail: errText,
+      console.error("❌ Gemini fail:", r.status, errText);
+      return res.json({
+        reply: "⚠️ Sorry, something went wrong. Can I help you with booking via Email or Phone?",
       });
     }
 
     const data = await r.json();
-    console.log("✅ Gemini API response:", JSON.stringify(data, null, 2));
-
-    let reply = "";
-    if (data?.candidates?.[0]?.content?.parts?.[0]?.text) {
-      reply = data.candidates[0].content.parts[0].text;
-      reply = ruleBasedOverride(userMessage, reply);
-    } else {
-      reply = "⚠️ Sorry, I couldn’t generate a proper response.";
-    }
-
+    let reply =
+      data?.candidates?.[0]?.content?.parts?.[0]?.text ||
+      "⚠️ Sorry, I couldn’t generate a proper response.";
     res.json({ reply });
   } catch (err) {
     console.error("💥 Chat API error:", err);
-    res.status(500).json({ error: "Server error", detail: err.message });
+    res.json({
+      reply:
+        "⚠️ System error. But I can still help — would you like to book via Email or Phone?",
+    });
   }
 });
 
 // --- Reset endpoint (for testing) ---
 app.post("/api/reset", (req, res) => {
   greeted = false;
-  bookingState = "pending";
+  bookingMethod = null;
   res.json({ reset: true });
 });
 
