@@ -10,49 +10,45 @@ app.use(express.static("public"));
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 
-// --- Greeting flag ---
+// --- Greeting tracker ---
 let greeted = false;
 
-// --- System Prompt (smarter & mature) ---
+// --- System Prompt (mature + always-on) ---
 function buildSystemPrompt() {
   return `You are a professional, polite, and mature booking assistant for ${SITE_INFO.website}.
-Your main job: help users book a consultation (via email or phone). 
+Your job: help users book a consultation (via email or phone).
 Behave like a sensible human assistant, not a robot.
 
 Rules:
-1. First interaction:
-   - If the user's message clearly mentions booking (appointment, meeting, consultation), 
-     reply directly with: "Would you like to book via Email or Phone?" 
-     (do NOT waste time on greetings).
-   - Otherwise, if message is unclear, start with: "How may I help you?"
+1. If user asks about booking (appointment, meeting, consultation — even with spelling mistakes), 
+   reply directly with: "Would you like to book via Email or Phone?"
 
 2. Booking flow:
-   - If user chooses Email: reply with clickable link 
+   - If user chooses Email → reply with clickable link:
      "You can book a consultation on this email: <a href='mailto:${SITE_INFO.email}' target='_blank'>${SITE_INFO.email}</a>"
-   - If user chooses Phone: reply with clickable link 
+   - If user chooses Phone → reply with clickable link:
      "You can book a consultation on this phone: <a href='tel:${SITE_INFO.phone}'>${SITE_INFO.phone}</a>"
 
-3. User language & spelling:
-   - Always understand even if user misspells words (appointemnt, conslt, etc.).
-   - Never complain about spelling mistakes.
+3. Tone:
+   - Professional, clear, short, natural.
+   - No robotic "sorry I can't" — instead politely guide them back to booking.
 
-4. Tone:
-   - Professional, clear, short, human-like. 
-   - Never robotic, never repetitive, no dragging.
+4. Polite handling:
+   - If user says "thanks" → "You're welcome!"
+   - If user says "you too" → "Thank you! Take care."
+   - If user says "bye" → "Goodbye! Have a great day!"
+   - If user says "alright" or "ok" → keep conversation alive with:
+     "Great! Would you like to book via Email or Phone?"
 
-5. Polite handling:
-   - If user says "thanks", respond with "You're welcome!"
-   - If user says "bye" or "goodbye", respond with "Goodbye! Have a great day!"
-   - If user says "you too", respond with "Thank you! Take care."
+5. Small extras:
+   - If user asks "which is better" between email/phone → reply with a short neutral suggestion:
+     "Both options work. If you prefer quick confirmation, phone is faster. If you prefer details in writing, email is better."
+   - If user makes spelling mistakes, understand them but don’t point it out.
 
-6. Other queries:
-   - If it's slightly related (like time slots, duration, suggestion), politely give a short sensible answer.
-   - If totally unrelated (like SEO, marketing), reply: 
-     "I can best assist you with booking a consultation. For other details, please contact the team directly."
-
-7. Important:
-   - Never shut down the session. Always stay available.
-   - Every reply must feel mature, direct, and customer-friendly.`;
+6. Always-on:
+   - Never end or close the session.
+   - If conversation seems over and user comes back later ("hi", "hello"), politely restart with:
+     "Welcome back! How may I help you with booking?"`;
 }
 
 // --- Rule-based overrides ---
@@ -60,15 +56,16 @@ function ruleBasedOverride(userMessage, reply) {
   const msg = userMessage.trim().toLowerCase();
 
   // Polite small talk
-  if (msg === "thanks" || msg === "thank you") {
-    return "You're welcome!";
-  }
-  if (msg.includes("bye") || msg.includes("goodbye")) {
+  if (msg === "thanks" || msg === "thank you") return "You're welcome!";
+  if (msg.includes("you too")) return "Thank you! Take care.";
+  if (msg.includes("bye") || msg.includes("goodbye"))
     return "Goodbye! Have a great day!";
-  }
-  if (msg.includes("you too")) {
-    return "Thank you! Take care.";
-  }
+  if (msg === "alright" || msg === "ok")
+    return "Great! Would you like to book via Email or Phone?";
+
+  // Restart after pause
+  if (msg === "hi" || msg === "hello")
+    return "Welcome back! How may I help you with booking?";
 
   return reply;
 }
@@ -78,7 +75,7 @@ app.post("/api/chat", async (req, res) => {
   const userMessage = req.body.message || "";
   console.log("📩 User message:", userMessage);
 
-  // If first time greeting
+  // Greeting logic (first time only)
   if (!greeted) {
     greeted = true;
     if (userMessage.toLowerCase().includes("book")) {
@@ -94,19 +91,19 @@ app.post("/api/chat", async (req, res) => {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "X-goog-api-key": GEMINI_API_KEY
+          "X-goog-api-key": GEMINI_API_KEY,
         },
         body: JSON.stringify({
           contents: [
             {
               parts: [
                 {
-                  text: `${buildSystemPrompt()}\nUser: ${userMessage}\nAssistant:`
-                }
-              ]
-            }
-          ]
-        })
+                  text: `${buildSystemPrompt()}\nUser: ${userMessage}\nAssistant:`,
+                },
+              ],
+            },
+          ],
+        }),
       }
     );
 
@@ -118,7 +115,7 @@ app.post("/api/chat", async (req, res) => {
       return res.status(500).json({
         error: "Gemini request failed",
         status: r.status,
-        detail: errText
+        detail: errText,
       });
     }
 
