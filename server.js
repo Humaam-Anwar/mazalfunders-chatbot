@@ -91,17 +91,23 @@ app.post("/api/chat", async (req, res) => {
     const data = await r.json();
     console.log("✅ Gemini API response:", JSON.stringify(data, null, 2));
 
-        let reply = "";
+    let reply = "";
     if (data?.candidates?.[0]?.content?.parts?.[0]?.text) {
       reply = data.candidates[0].content.parts[0].text;
 
-      // --- Post-processing for professionalism ---
-      if (/^ok$/i.test(userMessage.trim())) {
+      // --- Post-processing overrides ---
+      const msg = userMessage.trim().toLowerCase();
+
+      if (msg === "ok") {
         reply = "Great! Is there anything else I can help you with?";
       }
-      if (/^(thanks|thank you)$/i.test(userMessage.trim())) {
-        reply = "You're welcome! Have a great day.";
+      if (msg === "thanks" || msg === "thank you") {
+        reply = "You're welcome! Is there anything else I can help you with?";
       }
+      if (msg === "no thanks" || msg === "no, thanks" || msg === "no") {
+        reply = "Alright, have a great day!";
+      }
+
       // Prevent repeating greeting again
       if (reply.includes("How may I help you?") && greeted) {
         reply = "Is there anything else related to booking you’d like help with?";
@@ -109,7 +115,6 @@ app.post("/api/chat", async (req, res) => {
     } else {
       reply = "⚠️ Sorry, I couldn’t generate a proper response.";
     }
-
 
     res.json({ reply });
   } catch (err) {
@@ -136,4 +141,3 @@ const PORT = process.env.PORT || 3000;
 app.listen(PORT, () =>
   console.log(`🚀 Server running at http://localhost:${PORT}`)
 );
-
