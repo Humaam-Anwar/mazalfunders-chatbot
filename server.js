@@ -10,56 +10,69 @@ app.use(express.static("public"));
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 
-// --- Keep track of first greeting & exit ---
+// --- State ---
 let greeted = false;
 let sessionClosed = false;
 
+// --- Keywords for booking intent ---
+const bookingKeywords = [
+  "book",
+  "appointment",
+  "meeting",
+  "schedule",
+  "consultation",
+  "call"
+];
+
 // --- System Prompt ---
 function buildSystemPrompt() {
-  return `You are a booking assistant for ${SITE_INFO.website}.
-Your ONLY task is to help users book a consultation. Follow these exact rules:
+  return `You are a professional booking assistant for ${SITE_INFO.website}.
+Your ONLY job is to help users book a consultation.
 
-1. First greeting (only once):
-   - Reply exactly: "How may I help you?"
-   - Never repeat this greeting again.
+Rules:
+1. If the user clearly asks to book (appointment, meeting, call, consultation):
+   - Immediately offer: "Would you like to book via Email or Phone?"
+   - Do NOT waste time with greetings.
 
-2. If user asks about consultation (no email/phone yet):
-   - Reply: "Would you like to book via Email or Phone?"
+2. If user just says "hi", "hello", or is unclear:
+   - Reply once with: "How may I help you?"
 
-3. If user selects email:
+3. If user selects Email:
    - Reply exactly: "You can book a consultation on this email: <a href='mailto:${SITE_INFO.email}' target='_blank'>${SITE_INFO.email}</a>"
 
-4. If user selects phone:
+4. If user selects Phone:
    - Reply exactly: "You can book a consultation on this phone: <a href='tel:${SITE_INFO.phone}'>${SITE_INFO.phone}</a>"
 
-5. If user asks anything unrelated (pricing, services, SEO, etc.):
+5. If user asks anything unrelated (pricing, SEO, services, etc.):
    - Reply: "Sorry, I can only help you with booking a consultation."
 
-6. After polite exit (user says no / bye / thanks / you too):
-   - End conversation with a short polite closing.
-   - Never ask again if they need more help.
+6. For polite exits:
+   - If user says "no", "bye", "thanks", or "you too", reply politely once and close session.
+   - After that, NEVER send more replies.
 
-7. All responses must be short, clear, professional.
-   Links MUST always be clickable (HTML <a> tags).
-
-Strictly follow these rules.`;
+7. Be short, clear, professional. No unnecessary repetition.
+Links MUST be clickable using <a> tags.`;
 }
 
-// --- Rule-based overrides ---
+// --- Rule-based Overrides ---
 function ruleBasedOverride(userMessage, reply) {
   const msg = userMessage.trim().toLowerCase();
 
-  // If session closed, stay quiet (no repeats)
   if (sessionClosed) {
     return "✅ Session closed.";
   }
 
-  // Polite closings (end session)
-  if (msg === "no" || msg === "no thanks" || msg === "no, thanks") {
+  // Booking intent → jump directly
+  if (bookingKeywords.some((kw) => msg.includes(kw))) {
+    return "Would you like to book via Email or Phone?";
+  }
+
+  // Closings
+  if (msg === "no" || msg === "no thanks") {
     sessionClosed = true;
     return "Alright, have a great day!";
   }
-  if (msg === "bye" || msg === "goodbye") {
+  if (msg.includes("bye")) {
     sessionClosed = true;
     return "Goodbye! Take care.";
   }
@@ -67,18 +80,14 @@ function ruleBasedOverride(userMessage, reply) {
     sessionClosed = true;
     return "Thank you! Take care.";
   }
-
-  // Polite but keep session open
-  if (msg === "ok") {
-    return "Great! Would you like to book via Email or Phone?";
-  }
   if (msg === "thanks" || msg === "thank you") {
     return "You're welcome!";
   }
 
-  // Prevent repeating greeting
-  if (reply.includes("How may I help you?") && greeted) {
-    return "Sorry, I can only help you with booking a consultation.";
+  // Greeting once
+  if ((msg === "hi" || msg === "hello") && !greeted) {
+    greeted = true;
+    return "How may I help you?";
   }
 
   return reply;
@@ -87,15 +96,8 @@ function ruleBasedOverride(userMessage, reply) {
 // --- Chat Endpoint ---
 app.post("/api/chat", async (req, res) => {
   const userMessage = req.body.message || "";
-  console.log("📩 User message:", userMessage);
+  console.log("📩 User:", userMessage);
 
-  // Greeting once
-  if (!greeted) {
-    greeted = true;
-    return res.json({ reply: "How may I help you?" });
-  }
-
-  // If session closed, no more back & forth
   if (sessionClosed) {
     return res.json({ reply: "✅ Session closed." });
   }
@@ -143,7 +145,7 @@ app.post("/api/chat", async (req, res) => {
       reply = data.candidates[0].content.parts[0].text;
       reply = ruleBasedOverride(userMessage, reply);
 
-      // If closing message triggered, mark session closed
+      // Auto-close session if polite exit
       if (
         reply.startsWith("Alright") ||
         reply.startsWith("Goodbye") ||
@@ -162,7 +164,7 @@ app.post("/api/chat", async (req, res) => {
   }
 });
 
-// --- Reset endpoint (for testing) ---
+// --- Reset for testing ---
 app.post("/api/reset", (req, res) => {
   greeted = false;
   sessionClosed = false;
@@ -173,7 +175,6 @@ app.post("/api/reset", (req, res) => {
 app.get("/", (req, res) => {
   res.sendFile(process.cwd() + "/public/widget.html");
 });
-
 app.get("/api/siteinfo", (req, res) => res.json(SITE_INFO));
 
 // --- Start Server ---
