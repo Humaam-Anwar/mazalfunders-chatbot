@@ -10,84 +10,64 @@ app.use(express.static("public"));
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 
-// --- State ---
+// --- Greeting flag ---
 let greeted = false;
-let sessionClosed = false;
 
-// --- Keywords for booking intent ---
-const bookingKeywords = [
-  "book",
-  "appointment",
-  "meeting",
-  "schedule",
-  "consultation",
-  "call"
-];
-
-// --- System Prompt ---
+// --- System Prompt (smarter & mature) ---
 function buildSystemPrompt() {
-  return `You are a professional booking assistant for ${SITE_INFO.website}.
-Your ONLY job is to help users book a consultation.
+  return `You are a professional, polite, and mature booking assistant for ${SITE_INFO.website}.
+Your main job: help users book a consultation (via email or phone). 
+Behave like a sensible human assistant, not a robot.
 
 Rules:
-1. If the user clearly asks to book (appointment, meeting, call, consultation):
-   - Immediately offer: "Would you like to book via Email or Phone?"
-   - Do NOT waste time with greetings.
+1. First interaction:
+   - If the user's message clearly mentions booking (appointment, meeting, consultation), 
+     reply directly with: "Would you like to book via Email or Phone?" 
+     (do NOT waste time on greetings).
+   - Otherwise, if message is unclear, start with: "How may I help you?"
 
-2. If user just says "hi", "hello", or is unclear:
-   - Reply once with: "How may I help you?"
+2. Booking flow:
+   - If user chooses Email: reply with clickable link 
+     "You can book a consultation on this email: <a href='mailto:${SITE_INFO.email}' target='_blank'>${SITE_INFO.email}</a>"
+   - If user chooses Phone: reply with clickable link 
+     "You can book a consultation on this phone: <a href='tel:${SITE_INFO.phone}'>${SITE_INFO.phone}</a>"
 
-3. If user selects Email:
-   - Reply exactly: "You can book a consultation on this email: <a href='mailto:${SITE_INFO.email}' target='_blank'>${SITE_INFO.email}</a>"
+3. User language & spelling:
+   - Always understand even if user misspells words (appointemnt, conslt, etc.).
+   - Never complain about spelling mistakes.
 
-4. If user selects Phone:
-   - Reply exactly: "You can book a consultation on this phone: <a href='tel:${SITE_INFO.phone}'>${SITE_INFO.phone}</a>"
+4. Tone:
+   - Professional, clear, short, human-like. 
+   - Never robotic, never repetitive, no dragging.
 
-5. If user asks anything unrelated (pricing, SEO, services, etc.):
-   - Reply: "Sorry, I can only help you with booking a consultation."
+5. Polite handling:
+   - If user says "thanks", respond with "You're welcome!"
+   - If user says "bye" or "goodbye", respond with "Goodbye! Have a great day!"
+   - If user says "you too", respond with "Thank you! Take care."
 
-6. For polite exits:
-   - If user says "no", "bye", "thanks", or "you too", reply politely once and close session.
-   - After that, NEVER send more replies.
+6. Other queries:
+   - If it's slightly related (like time slots, duration, suggestion), politely give a short sensible answer.
+   - If totally unrelated (like SEO, marketing), reply: 
+     "I can best assist you with booking a consultation. For other details, please contact the team directly."
 
-7. Be short, clear, professional. No unnecessary repetition.
-Links MUST be clickable using <a> tags.`;
+7. Important:
+   - Never shut down the session. Always stay available.
+   - Every reply must feel mature, direct, and customer-friendly.`;
 }
 
-// --- Rule-based Overrides ---
+// --- Rule-based overrides ---
 function ruleBasedOverride(userMessage, reply) {
   const msg = userMessage.trim().toLowerCase();
 
-  if (sessionClosed) {
-    return "✅ Session closed.";
-  }
-
-  // Booking intent → jump directly
-  if (bookingKeywords.some((kw) => msg.includes(kw))) {
-    return "Would you like to book via Email or Phone?";
-  }
-
-  // Closings
-  if (msg === "no" || msg === "no thanks") {
-    sessionClosed = true;
-    return "Alright, have a great day!";
-  }
-  if (msg.includes("bye")) {
-    sessionClosed = true;
-    return "Goodbye! Take care.";
-  }
-  if (msg.includes("you too")) {
-    sessionClosed = true;
-    return "Thank you! Take care.";
-  }
+  // Polite small talk
   if (msg === "thanks" || msg === "thank you") {
     return "You're welcome!";
   }
-
-  // Greeting once
-  if ((msg === "hi" || msg === "hello") && !greeted) {
-    greeted = true;
-    return "How may I help you?";
+  if (msg.includes("bye") || msg.includes("goodbye")) {
+    return "Goodbye! Have a great day!";
+  }
+  if (msg.includes("you too")) {
+    return "Thank you! Take care.";
   }
 
   return reply;
@@ -96,10 +76,15 @@ function ruleBasedOverride(userMessage, reply) {
 // --- Chat Endpoint ---
 app.post("/api/chat", async (req, res) => {
   const userMessage = req.body.message || "";
-  console.log("📩 User:", userMessage);
+  console.log("📩 User message:", userMessage);
 
-  if (sessionClosed) {
-    return res.json({ reply: "✅ Session closed." });
+  // If first time greeting
+  if (!greeted) {
+    greeted = true;
+    if (userMessage.toLowerCase().includes("book")) {
+      return res.json({ reply: "Would you like to book via Email or Phone?" });
+    }
+    return res.json({ reply: "How may I help you?" });
   }
 
   try {
@@ -144,15 +129,6 @@ app.post("/api/chat", async (req, res) => {
     if (data?.candidates?.[0]?.content?.parts?.[0]?.text) {
       reply = data.candidates[0].content.parts[0].text;
       reply = ruleBasedOverride(userMessage, reply);
-
-      // Auto-close session if polite exit
-      if (
-        reply.startsWith("Alright") ||
-        reply.startsWith("Goodbye") ||
-        reply.startsWith("Thank you")
-      ) {
-        sessionClosed = true;
-      }
     } else {
       reply = "⚠️ Sorry, I couldn’t generate a proper response.";
     }
@@ -164,10 +140,9 @@ app.post("/api/chat", async (req, res) => {
   }
 });
 
-// --- Reset for testing ---
+// --- Reset endpoint (for testing) ---
 app.post("/api/reset", (req, res) => {
   greeted = false;
-  sessionClosed = false;
   res.json({ reset: true });
 });
 
@@ -175,6 +150,7 @@ app.post("/api/reset", (req, res) => {
 app.get("/", (req, res) => {
   res.sendFile(process.cwd() + "/public/widget.html");
 });
+
 app.get("/api/siteinfo", (req, res) => res.json(SITE_INFO));
 
 // --- Start Server ---
