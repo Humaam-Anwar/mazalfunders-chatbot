@@ -10,8 +10,10 @@ app.use(express.static("public"));
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 
-// --- Greeting tracker ---
+// --- Conversation State ---
 let greeted = false;
+let bookingState = "pending"; 
+// states: pending | choosing | booked
 
 // --- System Prompt (mature + always-on) ---
 function buildSystemPrompt() {
@@ -21,24 +23,27 @@ Behave like a sensible human assistant, not a robot.
 
 Rules:
 1. If user asks about booking (appointment, meeting, consultation — even with spelling mistakes), 
-   reply directly with: "Would you like to book via Email or Phone?"
+   reply directly with: "Would you like to book via Email or Phone?" and set state to choosing.
 
 2. Booking flow:
    - If user chooses Email → reply with clickable link:
      "You can book a consultation on this email: <a href='mailto:${SITE_INFO.email}' target='_blank'>${SITE_INFO.email}</a>"
+     (set state to booked)
    - If user chooses Phone → reply with clickable link:
      "You can book a consultation on this phone: <a href='tel:${SITE_INFO.phone}'>${SITE_INFO.phone}</a>"
+     (set state to booked)
 
 3. Tone:
    - Professional, clear, short, natural.
-   - No robotic "sorry I can't" — instead politely guide them back to booking.
+   - No robotic "sorry I can't" — instead politely guide them back to booking if needed.
 
 4. Polite handling:
    - If user says "thanks" → "You're welcome!"
    - If user says "you too" → "Thank you! Take care."
    - If user says "bye" → "Goodbye! Have a great day!"
-   - If user says "alright" or "ok" → keep conversation alive with:
-     "Great! Would you like to book via Email or Phone?"
+   - If user says "alright" or "ok":
+       • If booking not done yet → ask "Would you like to book via Email or Phone?"
+       • If booking already done → just reply politely like "Great!" or "Glad I could help."
 
 5. Small extras:
    - If user asks "which is better" between email/phone → reply with a short neutral suggestion:
@@ -55,13 +60,25 @@ Rules:
 function ruleBasedOverride(userMessage, reply) {
   const msg = userMessage.trim().toLowerCase();
 
-  // Polite small talk
+  // Booking flow updates
+  if (msg.includes("book")) bookingState = "choosing";
+  if (msg.includes("email")) bookingState = "booked";
+  if (msg.includes("phone")) bookingState = "booked";
+
+  // Polite responses
   if (msg === "thanks" || msg === "thank you") return "You're welcome!";
   if (msg.includes("you too")) return "Thank you! Take care.";
   if (msg.includes("bye") || msg.includes("goodbye"))
     return "Goodbye! Have a great day!";
-  if (msg === "alright" || msg === "ok")
-    return "Great! Would you like to book via Email or Phone?";
+
+  // Handle "alright" / "ok"
+  if (msg === "alright" || msg === "ok") {
+    if (bookingState === "booked") {
+      return "Great! Glad I could help.";
+    } else {
+      return "Would you like to book via Email or Phone?";
+    }
+  }
 
   // Restart after pause
   if (msg === "hi" || msg === "hello")
@@ -79,6 +96,7 @@ app.post("/api/chat", async (req, res) => {
   if (!greeted) {
     greeted = true;
     if (userMessage.toLowerCase().includes("book")) {
+      bookingState = "choosing";
       return res.json({ reply: "Would you like to book via Email or Phone?" });
     }
     return res.json({ reply: "How may I help you?" });
@@ -140,6 +158,7 @@ app.post("/api/chat", async (req, res) => {
 // --- Reset endpoint (for testing) ---
 app.post("/api/reset", (req, res) => {
   greeted = false;
+  bookingState = "pending";
   res.json({ reset: true });
 });
 
