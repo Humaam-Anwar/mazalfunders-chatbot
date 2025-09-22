@@ -18,13 +18,13 @@ let lastProvided = null;
 
 // --- Setup Nodemailer ---
 const transporter = nodemailer.createTransport({
-  service: "gmail",
+  host: "smtp.gmail.com",
+  port: 587,
+  secure: false,
   auth: {
     user: process.env.MAIL_USER,
     pass: process.env.MAIL_PASS,
   },
-  logger: true,
-  debug: true,
 });
 
 // --- Send notification email ---
