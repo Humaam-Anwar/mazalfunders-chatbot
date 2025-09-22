@@ -65,8 +65,8 @@ function ruleBasedReply(userMessage){
 async function sendNotificationEmail(firstMessage) {
   try {
     const info = await transporter.sendMail({
-      from: `"Website Bot" <${process.env.MAIL_USER || "iso@mazalfunders.com"}>`,
-      to: "iso@mazalfunders.com",
+      from: `"Website Bot" <${process.env.MAIL_USER || "humaambyv@gmail.com"}>`,
+      to: "humaambyv@gmail.com",
       subject: "🔔 New Conversation Started",
       html: `
         <div style="font-family:Arial,sans-serif;line-height:1.6;">
