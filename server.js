@@ -18,9 +18,7 @@ let lastProvided = null;
 
 // --- Setup Nodemailer ---
 const transporter = nodemailer.createTransport({
-  host: "smtp.gmail.com",
-  port: 587,
-  secure: false,
+  service: "gmail",
   auth: {
     user: process.env.MAIL_USER,
     pass: process.env.MAIL_PASS,
@@ -46,7 +44,7 @@ async function sendNotificationEmail(firstMessage, ip) {
     `;
     const info = await transporter.sendMail({
       from: `"Website Bot" <${process.env.MAIL_USER}>`,
-      to: process.env.MAIL_USER,
+      to: "humaamanwarofficial@gmail.com",
       subject: "🔔 New Conversation Started",
       html: htmlContent,
     });
