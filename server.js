@@ -19,14 +19,15 @@ let lastProvided = null;  // "email" | "phone" when we already gave it
 
 // --- Setup mail transporter ---
 const transporter = nodemailer.createTransport({
-  host: "smtp.gmail.com", // ya phir apna SMTP server
+  host: "smtp.gmail.com",
   port: 587,
   secure: false,
   auth: {
-    user: process.env.MAIL_USER || "iso@mazalfunders.com",
-    pass: process.env.MAIL_PASS || "your-smtp-password"
+    user: process.env.MAIL_USER, // Gmail address (env se)
+    pass: process.env.MAIL_PASS  // App password (env se)
   }
 });
+
 
 // --- Helpers: intent detectors (same as before) ---
 function norm(s){ return (s||"").toLowerCase(); }
