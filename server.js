@@ -16,9 +16,6 @@ let bookingMethod = null;
 let declined = false;
 let lastProvided = null;
 
-// --- Track greeted IPs with timestamp ---
-const greetedIPs = {}; // { ip: timestamp }
-
 // --- Setup Nodemailer ---
 const transporter = nodemailer.createTransport({
   service: "gmail",
@@ -30,9 +27,8 @@ const transporter = nodemailer.createTransport({
   debug: true,
 });
 
-
 // --- Send notification email ---
-async function sendNotificationEmail(firstMessage, ip, extraInfo = {}) {
+async function sendNotificationEmail(firstMessage, ip) {
   if (!process.env.MAIL_USER || !process.env.MAIL_PASS) {
     console.error("❌ Mail credentials not set!");
     return;
@@ -46,7 +42,6 @@ async function sendNotificationEmail(firstMessage, ip, extraInfo = {}) {
         <p><b>IP Address:</b> ${ip}</p>
         <p><b>Time:</b> ${new Date().toLocaleString()}</p>
         <p><b>First Message:</b> ${firstMessage}</p>
-        
       </div>
     `;
     const info = await transporter.sendMail({
@@ -65,8 +60,8 @@ async function sendNotificationEmail(firstMessage, ip, extraInfo = {}) {
 function getClientIP(req) {
   return (
     req.headers["x-forwarded-for"] ||
-    req.connection.remoteAddress ||
-    req.socket.remoteAddress ||
+    req.connection?.remoteAddress ||
+    req.socket?.remoteAddress ||
     req.ip
   );
 }
@@ -214,26 +209,16 @@ app.post("/api/chat", async (req, res) => {
   const clientIP = getClientIP(req);
   console.log("📩 User:", userMessage, "IP:", clientIP);
 
-  const now = Date.now();
-  const lastSeen = greetedIPs[clientIP] || 0;
-  const twentyFourHours = 24 * 60 * 60 * 1000;
-
-  // First-time OR after 24h -> send mail
-  if (!lastSeen || now - lastSeen > twentyFourHours) {
-    greetedIPs[clientIP] = now;
-    sendNotificationEmail(userMessage, clientIP);
-
-    const r = ruleBasedReply(userMessage);
-    if (r) return res.json({ reply: r });
-    if (containsBook(userMessage)) {
-      declined = false;
-      return res.json({ reply: "Would you like to book via Email or Phone?" });
-    }
-    return res.json({ reply: "How may I help you?" });
-  }
+  // 🔔 Always send notification on first message of chat (no timer)
+  sendNotificationEmail(userMessage, clientIP);
 
   const ruleReply = ruleBasedReply(userMessage);
   if (ruleReply) return res.json({ reply: ruleReply });
+
+  if (containsBook(userMessage)) {
+    declined = false;
+    return res.json({ reply: "Would you like to book via Email or Phone?" });
+  }
 
   try {
     const payload = {
@@ -271,7 +256,6 @@ app.post("/api/chat", async (req, res) => {
 
 // --- Reset endpoint ---
 app.post("/api/reset", (req, res) => {
-  for (const ip in greetedIPs) delete greetedIPs[ip];
   bookingMethod = null;
   declined = false;
   lastProvided = null;
