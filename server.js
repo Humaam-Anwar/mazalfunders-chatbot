@@ -29,33 +29,71 @@ const transporter = nodemailer.createTransport({
 
 // --- Send notification email ---
 async function sendNotificationEmail(firstMessage, ip) {
+  // Validate env
+  if (!process.env.BREVO_API_KEY) {
+    console.error("❌ BREVO_API_KEY not set in env!");
+    return { ok: false, error: "BREVO_API_KEY not set" };
+  }
+  if (!process.env.MAIL_USER) {
+    console.error("❌ MAIL_USER not set in env!");
+    return { ok: false, error: "MAIL_USER not set" };
+  }
+
   const htmlContent = `
     <div style="font-family:Arial,sans-serif;line-height:1.6;">
       <h2 style="color:#06b6d4;margin-bottom:8px;">New Chat Started</h2>
       <p><b>Website:</b> ${SITE_INFO.website}</p>
       <p><b>IP Address:</b> ${ip}</p>
       <p><b>Time:</b> ${new Date().toLocaleString()}</p>
-      <p><b>First Message:</b> ${firstMessage}</p>
+      <p><b>First Message:</b> ${escapeHtml(String(firstMessage))}</p>
     </div>
   `;
 
-  const res = await fetch("https://api.brevo.com/v3/smtp/email", {
-    method: "POST",
-    headers: {
-      "accept": "application/json",
-      "content-type": "application/json",
-      "api-key": process.env.BREVO_API_KEY,
-    },
-    body: JSON.stringify({
-      sender: { email: process.env.MAIL_USER, name: "Website Bot" },
-      to: [{ email: "humaamanwarofficial@gmail.com" }],
-      subject: "🔔 New Conversation Started",
-      htmlContent,
-    }),
-  });
+  const payload = {
+    sender: { email: process.env.MAIL_USER, name: "Website Bot" },
+    to: [{ email: "humaamanwarofficial@gmail.com" }], // receiver
+    subject: "🔔 New Conversation Started",
+    htmlContent,
+  };
 
-  const data = await res.json();
-  console.log("📧 Brevo API Response:", data);
+  try {
+    const resp = await fetch("https://api.brevo.com/v3/smtp/email", {
+      method: "POST",
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+        "api-key": process.env.BREVO_API_KEY,
+      },
+      body: JSON.stringify(payload),
+      // no timeout here; Railway should allow HTTPS requests
+    });
+
+    const data = await resp.json().catch(() => null);
+
+    // If Brevo responded with non-2xx
+    if (!resp.ok) {
+      console.error("❌ Brevo API error:", resp.status, data || "(no body)");
+      return { ok: false, status: resp.status, body: data };
+    }
+
+    // Brevo returns 201/202 on success; log and return success
+    console.log("📧 Brevo API success:", data);
+    return { ok: true, body: data };
+  } catch (err) {
+    // Network or other error
+    console.error("❌ Brevo API request failed:", err);
+    return { ok: false, error: err.message || String(err) };
+  }
+}
+
+// small helper to escape HTML in inserted user text
+function escapeHtml(str) {
+  return String(str)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
 }
 
 // --- Get client IP ---
