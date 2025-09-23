@@ -19,8 +19,8 @@ let lastProvided = null;
 // --- Setup Nodemailer ---
 const transporter = nodemailer.createTransport({
   host: "smtp-relay.brevo.com",  // Brevo SMTP server
-   port: 465,
-  secure: true,               // port 587 -> false, port 465 -> true
+  port: 587,                     // Brevo port (TLS)
+  secure: false,                 // port 587 -> false, port 465 -> true
    auth: {
     user: process.env.MAIL_USER,
     pass: process.env.MAIL_PASS,
@@ -29,33 +29,33 @@ const transporter = nodemailer.createTransport({
 
 // --- Send notification email ---
 async function sendNotificationEmail(firstMessage, ip) {
-  if (!process.env.MAIL_USER || !process.env.MAIL_PASS) {
-    console.error("❌ Mail credentials not set!");
-    return;
-  }
+  const htmlContent = `
+    <div style="font-family:Arial,sans-serif;line-height:1.6;">
+      <h2 style="color:#06b6d4;margin-bottom:8px;">New Chat Started</h2>
+      <p><b>Website:</b> ${SITE_INFO.website}</p>
+      <p><b>IP Address:</b> ${ip}</p>
+      <p><b>Time:</b> ${new Date().toLocaleString()}</p>
+      <p><b>First Message:</b> ${firstMessage}</p>
+    </div>
+  `;
 
-  try {
-    const htmlContent = `
-      <div style="font-family:Arial,sans-serif;line-height:1.6;">
-        <h2 style="color:#06b6d4;margin-bottom:8px;">New Chat Started</h2>
-        <p><b>Website:</b> ${SITE_INFO.website}</p>
-        <p><b>IP Address:</b> ${ip}</p>
-        <p><b>Time:</b> ${new Date().toLocaleString()}</p>
-        <p><b>First Message:</b> ${firstMessage}</p>
-      </div>
-    `;
-
-    const info = await transporter.sendMail({
-      from: `"Website Bot" <${process.env.MAIL_USER}>`, // sender email
-      to: "humaamanwarofficial@gmail.com",             // receiver email
+  const res = await fetch("https://api.brevo.com/v3/smtp/email", {
+    method: "POST",
+    headers: {
+      "accept": "application/json",
+      "content-type": "application/json",
+      "api-key": process.env.BREVO_API_KEY,
+    },
+    body: JSON.stringify({
+      sender: { email: process.env.MAIL_USER, name: "Website Bot" },
+      to: [{ email: "humaamanwarofficial@gmail.com" }],
       subject: "🔔 New Conversation Started",
-      html: htmlContent,
-    });
+      htmlContent,
+    }),
+  });
 
-    console.log("📧 Notification sent:", info.messageId);
-  } catch (err) {
-    console.error("❌ Mail error:", err);
-  }
+  const data = await res.json();
+  console.log("📧 Brevo API Response:", data);
 }
 
 // --- Get client IP ---
@@ -274,4 +274,3 @@ app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
 
 console.log("MAIL_USER:", process.env.MAIL_USER);
 console.log("MAIL_PASS:", process.env.MAIL_PASS ? "****" : "Not Set");
-
