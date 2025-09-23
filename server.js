@@ -18,8 +18,10 @@ let lastProvided = null;
 
 // --- Setup Nodemailer ---
 const transporter = nodemailer.createTransport({
-  service: "gmail",
-  auth: {
+  host: "smtp-relay.brevo.com",  // Brevo SMTP server
+  port: 587,                     // Brevo port (TLS)
+  secure: false,                 // port 587 -> false, port 465 -> true
+   auth: {
     user: process.env.MAIL_USER,
     pass: process.env.MAIL_PASS,
   },
@@ -42,12 +44,14 @@ async function sendNotificationEmail(firstMessage, ip) {
         <p><b>First Message:</b> ${firstMessage}</p>
       </div>
     `;
+
     const info = await transporter.sendMail({
-      from: `"Website Bot" <${process.env.MAIL_USER}>`,
-      to: "humaamanwarofficial@gmail.com",
+      from: `"Website Bot" <${process.env.MAIL_USER}>`, // sender email
+      to: "humaamanwarofficial@gmail.com",             // receiver email
       subject: "🔔 New Conversation Started",
       html: htmlContent,
     });
+
     console.log("📧 Notification sent:", info.messageId);
   } catch (err) {
     console.error("❌ Mail error:", err);
