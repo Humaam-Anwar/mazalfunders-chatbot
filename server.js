@@ -19,8 +19,8 @@ let lastProvided = null;
 // --- Setup Nodemailer ---
 const transporter = nodemailer.createTransport({
   host: "smtp-relay.brevo.com",  // Brevo SMTP server
-  port: 587,                     // Brevo port (TLS)
-  secure: false,                 // port 587 -> false, port 465 -> true
+   port: 465,
+  secure: true,               // port 587 -> false, port 465 -> true
    auth: {
     user: process.env.MAIL_USER,
     pass: process.env.MAIL_PASS,
@@ -274,3 +274,4 @@ app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
 
 console.log("MAIL_USER:", process.env.MAIL_USER);
 console.log("MAIL_PASS:", process.env.MAIL_PASS ? "****" : "Not Set");
+
