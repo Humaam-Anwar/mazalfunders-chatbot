@@ -17,7 +17,7 @@ app.use(express.static("public"));
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 const BREVO_API_KEY = process.env.BREVO_API_KEY;
 const MAIL_USER = process.env.MAIL_USER;
-const ADMIN_EMAIL = process.env.ADMIN_EMAIL || "humaamanwarofficial@gmail.com";
+const ADMIN_EMAIL = process.env.ADMIN_EMAIL || "Iso@mazalfunders.com";
 
 // --- Notification persistence (simple file store) ---
 const DATA_DIR = path.resolve(process.cwd(), "data");
@@ -390,3 +390,4 @@ app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
 console.log("MAIL_USER:", MAIL_USER);
 console.log("BREVO_API_KEY:", BREVO_API_KEY ? "****" : "Not Set");
 console.log("ADMIN_EMAIL:", ADMIN_EMAIL);
+
